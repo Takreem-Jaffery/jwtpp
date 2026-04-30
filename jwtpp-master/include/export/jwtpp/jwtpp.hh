@@ -154,9 +154,6 @@ private:
 	static void uri_dec(char *buf, size_t len);
 
 public:
-	// Moved from private: required by the file-static encode_group() and
-	// decode_group() helpers in b64.cpp (Extract Method refactoring).
-	static const std::string base64_chars;
 	/**
 	 * \brief
 	 *
@@ -181,27 +178,10 @@ public:
 	static std::string decode_uri(const std::string &in);
 };
 
-// REFACTORING: Replace Type Code with Subclass
-//
-// 'digest' was a 'final' class whose constructor contained a switch on
-// 'digest::type' with three near-identical SHA init/update/final blocks.
-// Each case is now represented by its own concrete subclass
-// (Sha256Digest, Sha384Digest, Sha512Digest), each of which encapsulates
-// exactly one algorithm with no switch at all.
-//
-// Changes made to this class declaration:
-//   1. 'final' removed  — the class must be inheritable by the subclasses.
-//   2. '~digest()' made virtual — required for safe polymorphic destruction.
-//   3. size(), data(), to_string() made pure virtual — each subclass
-//      provides its own implementation, eliminating the switch entirely.
-//   4. '_size' and '_data' moved to protected — subclasses need direct
-//      access to populate these fields during their own construction.
-//
-// Backward compatibility:
-//   The 'type' enum, the md() static helper, and the constructor signature
-//   digest(type, data, size) are all preserved unchanged. 
-
-class digest {
+/**
+ * \brief
+ */
+class digest final {
 public:
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
 	enum type {
@@ -215,15 +195,15 @@ public:
 
 public:
 	digest(digest::type type, const uint8_t *in_data, size_t in_size);
-	virtual ~digest();
+	~digest();
 
 	__NODISCARD
-	virtual size_t size() const;
+	size_t size() const;
 
-	virtual uint8_t *data();
+	uint8_t *data();
 
 	__NODISCARD
-	virtual std::string to_string() const;
+	std::string to_string() const;
 
 public:
 	static const EVP_MD *md(digest::type t) {
@@ -239,52 +219,9 @@ public:
 		}
 	}
 
-protected:
+private:
 	size_t                   _size;
 	std::shared_ptr<uint8_t> _data;
-};
-
-// ---------------------------------------------------------------------------
-// Concrete subclass for SHA-256.
-// Declared here; implemented in digest.cpp alongside the base class.
-// Replaces the SHA256 case of the original switch in digest's constructor.
-// ---------------------------------------------------------------------------
-class Sha256Digest final : public digest {
-public:
-	Sha256Digest(const uint8_t *in_data, size_t in_size);
-	~Sha256Digest() override = default;
-
-	__NODISCARD size_t size() const override;
-	uint8_t           *data()        override;
-	__NODISCARD std::string to_string() const override;
-};
-
-// ---------------------------------------------------------------------------
-// Concrete subclass for SHA-384.
-// Replaces the SHA384 case of the original switch in digest's constructor.
-// ---------------------------------------------------------------------------
-class Sha384Digest final : public digest {
-public:
-	Sha384Digest(const uint8_t *in_data, size_t in_size);
-	~Sha384Digest() override = default;
-
-	__NODISCARD size_t size() const override;
-	uint8_t           *data()        override;
-	__NODISCARD std::string to_string() const override;
-};
-
-// ---------------------------------------------------------------------------
-// Concrete subclass for SHA-512.
-// Replaces the SHA512 case of the original switch in digest's constructor.
-// ---------------------------------------------------------------------------
-class Sha512Digest final : public digest {
-public:
-	Sha512Digest(const uint8_t *in_data, size_t in_size);
-	~Sha512Digest() override = default;
-
-	__NODISCARD size_t size() const override;
-	uint8_t           *data()        override;
-	__NODISCARD std::string to_string() const override;
 };
 
 /**
@@ -297,8 +234,15 @@ private:
 	class has {
 	public:
 		explicit has(Json::Value *c) : _claims(c) {}
+	public:
 		bool any(const std::string &key) { return _claims->isMember(key); }
-		//Remove Middle Man by getting rid of iss, sub, aud...
+		bool iss() { return any("iss"); }
+		bool sub() { return any("sub"); }
+		bool aud() { return any("aud"); }
+		bool exp() { return any("exp"); }
+		bool nbf() { return any("nbf"); }
+		bool iat() { return any("iat"); }
+		bool jti() { return any("jti"); }
 	private:
 		Json::Value *_claims;
 	};
@@ -307,13 +251,9 @@ private:
 	public:
 		explicit check(Json::Value *c) : _claims(c) {}
 	public:
-		//Replace Temp with Query
-		//added claimsString
-		std::string claimsString(const std::string &key){
-			return _claims->operator[](key).asString();
-		}
 		bool any(const std::string &key, const std::string &value) {
-			return claimsString(key) == value;
+			std::string s = _claims->operator[](key).asString();
+			return s == value;
 		}
 		
 		bool any(const std::string &key, Json::UInt value) { return _claims->operator[](key).asUInt() == value; }
@@ -322,7 +262,13 @@ private:
 		bool any(const std::string &key, Json::Int64 value) { return _claims->operator[](key).asInt64() == value; }
 		bool any(const std::string &key, double value) { return _claims->operator[](key).asDouble() == value; }
 		
-	
+		bool iss(const std::string &value) { return any("iss", value); }
+		bool sub(const std::string &value) { return any("sub", value); }
+		bool aud(const std::string &value) { return any("aud", value); }
+		bool exp(const std::string &value) { return any("exp", value); }
+		bool nbf(const std::string &value) { return any("nbf", value); }
+		bool iat(const std::string &value) { return any("iat", value); }
+		bool jti(const std::string &value) { return any("jti", value); }
 	private:
 		Json::Value *_claims;
 	};
@@ -330,8 +276,15 @@ private:
 	class del {
 	public:
 		explicit del(Json::Value *c) : _claims(c) {}
+	public:
 		void any(const std::string &key) { _claims->removeMember(key); }
-		
+		void iss() { any("iss"); }
+		void sub() { any("sub"); }
+		void aud() { any("aud"); }
+		void exp() { any("exp"); }
+		void nbf() { any("nbf"); }
+		void iat() { any("nbf"); }
+		void jti() { any("jti"); }
 	private:
 		Json::Value *_claims;
 	};
@@ -341,12 +294,8 @@ private:
 	public:
 		explicit get(Json::Value *c) : _claims(c) {}
 	public:
-		//Same Replace Temp With Query as Above
-		std::string claimsString(const std::string &key) {
-			return _claims->operator[](key).asString();
-		}
 		std::string any(const std::string &key) {
-			return claimsString(key);
+			return _claims->operator[](key).asString();
 		}
 		
 		Json::Int anyInt(const std::string &key) {
@@ -373,6 +322,13 @@ private:
 			return _claims->operator[](key).asDouble();
 		}
 		
+		std::string iss() { return any("iss"); }
+		std::string sub() { return any("sub"); }
+		std::string aud() { return any("aud"); }
+		std::string exp() { return any("exp"); }
+		std::string nbf() { return any("nbf"); }
+		std::string iat() { return any("iat"); }
+		std::string jti() { return any("jti"); }
 	private:
 		Json::Value *_claims;
 	};
@@ -381,9 +337,6 @@ private:
 	public:
 		explicit set(Json::Value *c) : _claims(c) {}
 	public:
-		//defined in claims.cpp
-		void any(const std::string &key, const std::string &value);
-
 		void any(const std::string &key, Json::UInt value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, Json::Int value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, Json::UInt64 value) { _claims->operator[](key) = value; }
@@ -391,6 +344,14 @@ private:
 		void any(const std::string &key, double value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, const std::string &value);
 		
+		void iss(const std::string &value) { any("iss", value); }
+		void sub(const std::string &value) { any("sub", value); }
+		void aud(const std::string &value) { any("aud", value); }
+		void exp(const std::string &value) { any("exp", value); }
+		void nbf(const std::string &value) { any("nbf", value); }
+		void iat(const std::string &value) { any("iat", value); }
+		void jti(const std::string &value) { any("jti", value); }
+
 	private:
 		Json::Value *_claims;
 	};
@@ -457,9 +418,6 @@ public:
 #endif // !(defined(_MSC_VER) && (_MSC_VER < 1700))
 
 private:
-	//Extract Method parse() declared here, defined in claims.cpp
-	void parse(const std::string &d, bool b64);
-	
 	Json::Value _claims;
 
 	class set   _set;
@@ -646,8 +604,7 @@ public:
 
 protected:
 	static int hash2nid(digest::type type);
-	//Extract Method
-	static digest::type resolve_hash_type(alg_t a);
+
 protected:
 	alg_t          _alg;
 	Json::Value    _hdr;
@@ -671,12 +628,6 @@ public:
 		return std::make_shared<class hmac>(__args...);
 	}
 #endif // !(defined(_MSC_VER) && (_MSC_VER < 1700))
-private:
-    // [Extract Method] — extracted from sign()
-    const EVP_MD         *select_evp() const;
-    HMAC_CTX             *create_hmac_ctx() const;
-    void                  destroy_hmac_ctx(HMAC_CTX *ctx) const;
-    std::vector<uint8_t>  compute_hmac(const std::string &data, const EVP_MD *evp) const;
 
 private:
 	secure_string _secret;
@@ -708,9 +659,7 @@ public:
 
 private:
 	static int password_loader(char *buf, int size, int rwflag, void *u);
-	// [Extract Method]
-	digest compute_digest(const std::string &data) const;
-	static void validate_rsa_key(RSA *r, const on_password_wrap &wrap);
+
 private:
 	sp_rsa_key   _r;
 	unsigned int _key_size;
