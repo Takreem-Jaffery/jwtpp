@@ -26,6 +26,23 @@
 
 #include <gtest/gtest.h>
 
+// -----------------------------------------------------------------------
+// TEST FILE NOTE — eddsa tests
+//
+// The public interface of jwtpp::eddsa is completely unchanged.
+// The constructor, sign(), verify(), gen(), and get_pub() have identical
+// signatures and semantics.
+//
+// Refactoring applied to eddsa.cpp:
+//   • Extract Method (make_evp_md_ctx) — the two-step EVP_MD_CTX
+//     allocation + initialisation sequence that was duplicated at the top
+//     of both sign() and verify() is now a single file-static helper.
+//
+// The helper is file-static and invisible to callers.
+// No test code needs to change.
+// -----------------------------------------------------------------------
+
+
 TEST(jwtpp, sign_verify_eddsa) {
 	jwtpp::claims cl;
 

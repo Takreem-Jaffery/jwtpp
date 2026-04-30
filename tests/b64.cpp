@@ -28,6 +28,28 @@
 
 #include <jwtpp/jwtpp.hh>
 
+// -----------------------------------------------------------------------
+// TEST FILE NOTE — b64 tests
+//
+// The public interface of jwtpp::b64 is unchanged by the refactorings
+// applied to b64.cpp.  All encode/decode/encode_uri/decode_uri overloads
+// have identical signatures and semantics.
+//
+// Refactorings applied to b64.cpp:
+//   • Extract Method (encode_group) — the 3-byte → 4-char base64
+//     conversion that was duplicated in the main loop and remainder block
+//     of encode() is now a single file-static helper.
+//   • Extract Method (decode_group) — the 4-char → 3-byte conversion
+//     duplicated in the main loop and remainder block of decode() is now
+//     a single file-static helper.
+//
+// One structural change in jwtpp.hh: base64_chars was moved from private
+// to public so the file-static helpers can reference it via b64::base64_chars.
+// This does not affect any test code.
+//
+// Because all changes are internal or additive, no test code needs to change.
+// -----------------------------------------------------------------------
+
 TEST(jwtpp, b64)
 {
 	std::vector<uint8_t> in;

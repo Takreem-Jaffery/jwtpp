@@ -25,6 +25,25 @@
 
 #include <jwtpp/jwtpp.hh>
 
+// -----------------------------------------------------------------------
+// TEST FILE NOTE — ecdsa tests
+//
+// The public interface of jwtpp::ecdsa is completely unchanged.
+// The constructor, sign(), verify(), and gen() have identical signatures
+// and semantics.
+//
+// Refactorings applied to ecdsa.cpp:
+//   • Decompose Conditional — the inline degree-check error-message
+//     construction inside gen() was moved to validate_curve_degree().
+//   • Extract Method — the public-key derivation steps at the end of
+//     gen() (point multiply, set public key, check key) were moved to
+//     derive_and_set_public_key().
+//
+// Both helpers are file-static free functions, invisible to callers.
+// No test code needs to change.
+// -----------------------------------------------------------------------
+ 
+
 TEST(jwtpp, sign_verify_ecdsa256) {
 	jwtpp::claims cl;
 
