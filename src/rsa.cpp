@@ -41,17 +41,31 @@ rsa::rsa(sp_rsa_key key, alg_t a)
 rsa::~rsa() {
 	static_instance();
 }
+// [Extract Method]
+// Both sign() and verify() independently constructed a digest object with
+// identical arguments. Extracted into compute_digest() to remove duplication
+// and give the operation a clear name.
+digest rsa::compute_digest(const std::string &data) const {
+	return digest(_hash_type,
+	              reinterpret_cast<const uint8_t *>(data.data()),
+	              data.length());
+}
 
 std::string rsa::sign(const std::string &data) {
 	if (data.empty()) {
 		throw std::invalid_argument("data is empty");
 	}
 
-	std::shared_ptr<uint8_t> sig = std::shared_ptr<uint8_t>(new uint8_t[_key_size], std::default_delete<uint8_t[]>());
+	std::shared_ptr<uint8_t> sig(new uint8_t[_key_size],
+	                              std::default_delete<uint8_t[]>());
 
-	digest d(_hash_type, reinterpret_cast<const uint8_t *>(data.data()), data.length());
+	// [Replace Temp with Query] — digest obtained via the extracted helper
+	digest d = compute_digest(data);
 
-	if (RSA_sign(hash2nid(_hash_type), d.data(), static_cast<int>(d.size()), sig.get(), &_key_size, _r.get()) != 1) {
+	if (RSA_sign(hash2nid(_hash_type),
+	             d.data(), static_cast<int>(d.size()),
+	             sig.get(), &_key_size,
+	             _r.get()) != 1) {
 		throw std::runtime_error("Couldn't sign RSA");
 	}
 
@@ -59,17 +73,17 @@ std::string rsa::sign(const std::string &data) {
 }
 
 bool rsa::verify(const std::string &data, const std::string &sig) {
-	digest d(_hash_type, reinterpret_cast<const uint8_t *>(data.data()), data.length());
+	// [Replace Temp with Query] — digest obtained via the extracted helper
+	digest d = compute_digest(data);
 
 	std::vector<uint8_t> s = b64::decode_uri(sig.data(), sig.length());
 
 	return RSA_verify(
-		hash2nid(_hash_type)
-		, d.data()
-		, static_cast<int>(d.size())
-		, reinterpret_cast<const uint8_t *>(s.data())
-		, static_cast<int>(s.size())
-		, _r.get()) == 1;
+		hash2nid(_hash_type),
+		d.data(), static_cast<int>(d.size()),
+		reinterpret_cast<const uint8_t *>(s.data()),
+		static_cast<int>(s.size()),
+		_r.get()) == 1;
 }
 
 sp_rsa_key rsa::gen(int size) {
@@ -86,40 +100,46 @@ sp_rsa_key rsa::gen(int size) {
 	return key;
 }
 
-sp_rsa_key rsa::load_from_file(const std::string &path, password_cb on_password) {
-	RSA *r;
+// [Extract Method]
+// The PEM_read error-checking pattern (wrap.required / r == nullptr) was
+// duplicated verbatim in both load_from_file() and load_from_string().
+// Extracted into validate_rsa_key() so both loaders share one copy.
+//
+// [Decompose Conditional]
+// The original used else-if between the two error checks, implying they
+// were related. They are independent failure modes — split into separate
+// if statements so each stands alone.
+void rsa::validate_rsa_key(RSA *r, const on_password_wrap &wrap) {
+	if (wrap.required) {
+		throw std::runtime_error("password required");
+	}
+	if (r == nullptr) {
+		throw std::runtime_error("read rsa key");
+	}
+}
 
+sp_rsa_key rsa::load_from_file(const std::string &path, password_cb on_password) {
 	auto f = up_file(::std::fopen(path.c_str(), "re"), ::std::fclose);
 	if (!f) {
 		throw std::runtime_error("cannot open file " + path);
 	}
 
 	on_password_wrap wrap(on_password);
+	RSA *r = PEM_read_RSAPrivateKey(f.get(), nullptr, password_loader, &wrap);
 
-	r = PEM_read_RSAPrivateKey(f.get(), nullptr, password_loader, &wrap);
-	if (wrap.required) {
-		throw std::runtime_error("password required");
-	} else if (r == nullptr) {
-		throw std::runtime_error("read rsa key");
-	}
+	validate_rsa_key(r, wrap);
 
 	return std::shared_ptr<RSA>(r, ::RSA_free);
 }
 
-sp_rsa_key rsa::load_from_string(const std::string& str, password_cb on_password) {
-	RSA *r;
-	
+sp_rsa_key rsa::load_from_string(const std::string &str, password_cb on_password) {
 	auto bio = std::unique_ptr<BIO, BIODeleter>{BIO_new_mem_buf(str.data(), str.size())};
-	
-	on_password_wrap wrap(on_password);
 
-	r = PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, password_loader, &wrap);
-	if (wrap.required) {
-		throw std::runtime_error("password required");
-	} else if (r == nullptr) {
-		throw std::runtime_error("read rsa key");
-	}	
-	
+	on_password_wrap wrap(on_password);
+	RSA *r = PEM_read_bio_RSAPrivateKey(bio.get(), nullptr, password_loader, &wrap);
+
+	validate_rsa_key(r, wrap);
+
 	return std::shared_ptr<RSA>(r, ::RSA_free);
 }
 
@@ -143,5 +163,6 @@ int rsa::password_loader(char *buf, int size, int rwflag, void *u) {
 
 	return pass_size;
 }
+
 
 } // namespace jwtpp

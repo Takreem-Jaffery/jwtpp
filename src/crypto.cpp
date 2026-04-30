@@ -23,26 +23,35 @@
 #include <jwtpp/jwtpp.hh>
 
 namespace jwtpp {
-
-crypto::crypto(alg_t a)
-	: _alg(a)
-	, _hdr()
-	, _hash_type(digest::type::SHA256)
-{
-	if (a == alg_t::HS256 || a == alg_t::RS256 || a == alg_t::ES256 || a == alg_t::PS256) {
-		_hash_type = digest::type::SHA256;
-	} else if (a == alg_t::HS384 || a == alg_t::RS384 || a == alg_t::ES384 || a == alg_t::PS384) {
-		_hash_type = digest::type::SHA384;
-	} else if (a == alg_t::HS512 || a == alg_t::RS512 || a == alg_t::ES512 || a == alg_t::PS512) {
-		_hash_type = digest::type::SHA512;
+// [Extract Method]
+// The if/else-if chain mapping alg_t → digest::type was inlined in the
+// constructor body, making it hard to read and untestable in isolation.
+// Extracted into resolve_hash_type() so the constructor initialiser list
+// calls it directly as a query.
+digest::type crypto::resolve_hash_type(alg_t a) {
+    if (a == alg_t::HS256 || a == alg_t::RS256 || a == alg_t::ES256 || a == alg_t::PS256) {
+        return digest::type::SHA256;
+    } else if (a == alg_t::HS384 || a == alg_t::RS384 || a == alg_t::ES384 || a == alg_t::PS384) {
+        return digest::type::SHA384;
+    } else if (a == alg_t::HS512 || a == alg_t::RS512 || a == alg_t::ES512 || a == alg_t::PS512) {
+        return digest::type::SHA512;
 #if defined(JWTPP_SUPPORTED_EDDSA)
-	} else if (a == alg_t::EdDSA) {
-		// ED25519 does not support digests
+    } else if (a == alg_t::EdDSA) {
+        // ED25519 does not support digests; return default
+        return digest::type::SHA256;
 #endif // defined(JWTPP_SUPPORTED_EDDSA)
-	} else {
-		throw std::runtime_error("invalid algorithm");
-	}
+    } else {
+        throw std::runtime_error("invalid algorithm");
+    }
 }
+// [Replace Temp with Query]
+// resolve_hash_type() is now called directly in the member initialiser list,
+// so _hash_type is set in one step with no mutable temporary.
+crypto::crypto(alg_t a)
+    : _alg(a)
+    , _hdr()
+    , _hash_type(resolve_hash_type(a))
+{}
 
 crypto::~crypto() {}
 
@@ -119,22 +128,17 @@ alg_t crypto::str2alg(const std::string &a) {
 	}
 }
 
+// [Replace Temp with Query]
+// The original initialised `ret` to NID_sha256 then conditionally overwrote
+// it — a mutable temporary with a misleading default. Each branch now returns
+// directly, making the mapping unambiguous with no temp variable.
 int crypto::hash2nid(digest::type type) {
-	int ret = NID_sha256;
-
-	switch (type) {
-	case digest::type::SHA256:
-		ret = NID_sha256;
-		break;
-	case digest::type::SHA384:
-		ret = NID_sha384;
-		break;
-	case digest::type::SHA512:
-		ret = NID_sha512;
-		break;
-	}
-
-	return ret;
+    switch (type) {
+    case digest::type::SHA256: return NID_sha256;
+    case digest::type::SHA384: return NID_sha384;
+    case digest::type::SHA512: return NID_sha512;
+    default:                   return NID_sha256;
+    }
 }
 
 } // namespace jwtpp

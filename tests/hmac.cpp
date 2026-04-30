@@ -44,7 +44,7 @@ TEST(jwtpp, sign_verify_hmac256)
 {
 	jwtpp::claims cl;
 
-	cl.set().iss("troian");
+	cl.set().any("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);
@@ -59,7 +59,7 @@ TEST(jwtpp, sign_verify_hmac256)
 	EXPECT_TRUE(jws->verify(h256));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return cl->check().iss("troian");
+		return cl->check().any("iss", "troian")
 	};
 
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
@@ -85,7 +85,7 @@ TEST(jwtpp, sign_verify_hmac384)
 {
 	jwtpp::claims cl;
 
-	cl.set().iss("troian");
+	cl.set().any("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);
@@ -100,7 +100,7 @@ TEST(jwtpp, sign_verify_hmac384)
 	EXPECT_TRUE(jws->verify(h384));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return cl->check().iss("troian");
+		return cl->check().any("iss", "troian")
 	};
 
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
@@ -126,7 +126,7 @@ TEST(jwtpp, sign_verify_hmac512)
 {
 	jwtpp::claims cl;
 
-	cl.set().iss("troian");
+	cl.set().any("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);
@@ -141,7 +141,7 @@ TEST(jwtpp, sign_verify_hmac512)
 	EXPECT_TRUE(jws->verify(h512));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return cl->check().iss("troian");
+		return cl->check().any("iss", "troian")
 	};
 
 #if defined(_MSC_VER) && (_MSC_VER < 1700)

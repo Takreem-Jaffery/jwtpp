@@ -644,7 +644,8 @@ public:
 
 protected:
 	static int hash2nid(digest::type type);
-
+	//Extract Method
+	static digest::type resolve_hash_type(alg_t a);
 protected:
 	alg_t          _alg;
 	Json::Value    _hdr;
@@ -668,6 +669,12 @@ public:
 		return std::make_shared<class hmac>(__args...);
 	}
 #endif // !(defined(_MSC_VER) && (_MSC_VER < 1700))
+private:
+    // [Extract Method] — extracted from sign()
+    const EVP_MD         *select_evp() const;
+    HMAC_CTX             *create_hmac_ctx() const;
+    void                  destroy_hmac_ctx(HMAC_CTX *ctx) const;
+    std::vector<uint8_t>  compute_hmac(const std::string &data, const EVP_MD *evp) const;
 
 private:
 	secure_string _secret;
@@ -699,7 +706,9 @@ public:
 
 private:
 	static int password_loader(char *buf, int size, int rwflag, void *u);
-
+	// [Extract Method]
+	digest compute_digest(const std::string &data) const;
+	static void validate_rsa_key(RSA *r, const on_password_wrap &wrap);
 private:
 	sp_rsa_key   _r;
 	unsigned int _key_size;
