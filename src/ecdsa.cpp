@@ -25,83 +25,150 @@
 #include <jwtpp/jwtpp.hh>
 
 namespace jwtpp {
-
+ 
 ecdsa::ecdsa(sp_ecdsa_key key, alg_t a)
-	: crypto(a)
-	, _e(key)
+    : crypto(a)
+    , _e(key)
 {
-	if (a != alg_t::ES256 && a != alg_t::ES384 && a != alg_t::ES512) {
-		throw std::invalid_argument("Invalid algorithm");
-	}
+    if (a != alg_t::ES256 && a != alg_t::ES384 && a != alg_t::ES512) {
+        throw std::invalid_argument("Invalid algorithm");
+    }
 }
-
+ 
 std::string ecdsa::sign(const std::string &data) {
-	if (data.empty()) {
-		throw std::invalid_argument("data is empty");
-	}
-
-	auto sig = std::shared_ptr<uint8_t>(new uint8_t[ECDSA_size(_e.get())], std::default_delete<uint8_t[]>());
-
-	digest d(_hash_type, reinterpret_cast<const uint8_t *>(data.data()), data.length());
-
-	uint32_t sig_len;
-
-	if (ECDSA_sign(0, d.data(), static_cast<int>(d.size()), sig.get(), &sig_len, _e.get()) != 1) {
-		throw std::runtime_error("Couldn't sign ECDSA");
-	}
-
-	return b64::encode_uri(sig.get(), sig_len);
+    if (data.empty()) {
+        throw std::invalid_argument("data is empty");
+    }
+ 
+    auto sig = std::shared_ptr<uint8_t>(
+        new uint8_t[ECDSA_size(_e.get())],
+        std::default_delete<uint8_t[]>());
+ 
+    digest d(_hash_type,
+             reinterpret_cast<const uint8_t *>(data.data()),
+             data.length());
+ 
+    uint32_t sig_len;
+ 
+    if (ECDSA_sign(0, d.data(), static_cast<int>(d.size()),
+                   sig.get(), &sig_len, _e.get()) != 1) {
+        throw std::runtime_error("Couldn't sign ECDSA");
+    }
+ 
+    return b64::encode_uri(sig.get(), sig_len);
 }
-
+ 
 bool ecdsa::verify(const std::string &data, const std::string &sig) {
-	digest d(_hash_type, reinterpret_cast<const uint8_t *>(data.data()), data.length());
-
-	auto s = b64::decode_uri(sig.data(), sig.length());
-
-	return ECDSA_verify(
-		0
-		, d.data()
-		, static_cast<int>(d.size())
-		, reinterpret_cast<const uint8_t *>(s.data())
-		, static_cast<int>(s.size())
-		, _e.get()) == 1;
+    digest d(_hash_type,
+             reinterpret_cast<const uint8_t *>(data.data()),
+             data.length());
+ 
+    auto s = b64::decode_uri(sig.data(), sig.length());
+ 
+    return ECDSA_verify(
+               0,
+               d.data(),
+               static_cast<int>(d.size()),
+               reinterpret_cast<const uint8_t *>(s.data()),
+               static_cast<int>(s.size()),
+               _e.get()) == 1;
 }
-
+ 
+// -----------------------------------------------------------------------
+// REFACTORING: Decompose Conditional
+//
+// The original gen() had an inline conditional that built an error-message
+// string through a std::stringstream and immediately threw. That block
+// mixed the guard condition (is the curve degree acceptable?) with the
+// mechanics of constructing a diagnostic message.  Moving it into a named
+// function separates the concern ("validate that this curve is strong
+// enough") from the calling context, making gen() easier to read and the
+// validation rule easier to find and modify independently.
+// -----------------------------------------------------------------------
+static void validate_curve_degree(int nid, int degree) {
+    if (degree < 160) {
+        std::stringstream str;
+        str << "Skip the curve [" << OBJ_nid2sn(nid)
+            << "] (degree = " << degree << ")";
+        throw std::runtime_error(str.str());
+    }
+}
+ 
+// -----------------------------------------------------------------------
+// REFACTORING: Extract Method
+//
+// The public-key derivation steps at the bottom of gen() — multiply the
+// generator point by the private scalar, set the result as the public key,
+// and verify the resulting key — form a single cohesive operation:
+// "derive and attach the public key".  Extracting them into
+// derive_and_set_public_key() gives the operation a clear name, reduces
+// the length of gen(), and makes each step's purpose obvious at the call
+// site.
+// -----------------------------------------------------------------------
+static void derive_and_set_public_key(sp_ecdsa_key key,
+                                      std::shared_ptr<EC_GROUP> group,
+                                      std::shared_ptr<EC_POINT> point,
+                                      const BIGNUM *priv)
+{
+    if (EC_POINT_mul(group.get(), point.get(), priv,
+                     nullptr, nullptr, nullptr) != 1) {
+        throw std::runtime_error("Couldn't generate EC PUB KEY");
+    }
+    if (EC_KEY_set_public_key(key.get(), point.get()) != 1) {
+        throw std::runtime_error("Couldn't set EC PUB KEY");
+    }
+    if (EC_KEY_check_key(key.get()) != 1) {
+        throw std::runtime_error("EC check failed");
+    }
+}
+ 
 sp_ecdsa_key ecdsa::gen(int nid) {
-	sp_ecdsa_key key = std::shared_ptr<EC_KEY>(EC_KEY_new(), ::EC_KEY_free);
-	std::shared_ptr<EC_GROUP> group = std::shared_ptr<EC_GROUP>(EC_GROUP_new_by_curve_name(nid), ::EC_GROUP_free);
-	std::shared_ptr<EC_POINT> point = std::shared_ptr<EC_POINT>(EC_POINT_new(group.get()), ::EC_POINT_free);
-
-	if (EC_KEY_set_group(key.get(), group.get()) != 1) {
-		throw std::runtime_error("Couldn't set EC KEY group");
-	}
-
-	int degree = EC_GROUP_get_degree(EC_KEY_get0_group(key.get()));
-	if (degree < 160) {
-		std::stringstream str;
-		str << "Skip the curve [" << OBJ_nid2sn(nid) << "] (degree = " << degree << ")";
-		throw std::runtime_error(str.str());
-	}
-
-	if (EC_KEY_generate_key(key.get()) != 1) {
-		throw std::runtime_error("Couldn't generate EC KEY");
-	}
-
-	const BIGNUM *priv = EC_KEY_get0_private_key(key.get());
-
-	if (EC_POINT_mul(group.get(), point.get(), priv, nullptr, nullptr, nullptr) != 1) {
-		throw std::runtime_error("Couldn't generate EC PUB KEY");
-	}
-
-	if (EC_KEY_set_public_key(key.get(), point.get()) != 1) {
-		throw std::runtime_error("Couldn't set EC PUB KEY");
-	}
-
-	if (EC_KEY_check_key(key.get()) != 1) {
-		throw std::runtime_error("EC check failed");
-	}
-
-	return key;
+    sp_ecdsa_key key = std::shared_ptr<EC_KEY>(EC_KEY_new(), ::EC_KEY_free);
+    std::shared_ptr<EC_GROUP> group =
+        std::shared_ptr<EC_GROUP>(EC_GROUP_new_by_curve_name(nid), ::EC_GROUP_free);
+    std::shared_ptr<EC_POINT> point =
+        std::shared_ptr<EC_POINT>(EC_POINT_new(group.get()), ::EC_POINT_free);
+ 
+    if (EC_KEY_set_group(key.get(), group.get()) != 1) {
+        throw std::runtime_error("Couldn't set EC KEY group");
+    }
+ 
+    int degree = EC_GROUP_get_degree(EC_KEY_get0_group(key.get()));
+    validate_curve_degree(nid, degree);   // Decompose Conditional
+ 
+    if (EC_KEY_generate_key(key.get()) != 1) {
+        throw std::runtime_error("Couldn't generate EC KEY");
+    }
+ 
+    const BIGNUM *priv = EC_KEY_get0_private_key(key.get());
+    derive_and_set_public_key(key, group, point, priv);   // Extract Method
+ 
+    return key;
 }
-
+ 
 } // namespace jwtpp
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

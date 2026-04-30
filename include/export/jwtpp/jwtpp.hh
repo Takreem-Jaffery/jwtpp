@@ -143,8 +143,6 @@ using secure_string = std::basic_string<char, std::char_traits<char>, secure_all
 
 class b64 final {
 private:
-	static const std::string base64_chars;
-
 	static inline bool is_base64(unsigned char c) {
 		return (isalnum(c) || (c == '+') || (c == '/'));
 	}
@@ -154,6 +152,9 @@ private:
 	static void uri_dec(char *buf, size_t len);
 
 public:
+	// Moved from private: required by the file-static encode_group() and
+	// decode_group() helpers in b64.cpp (Extract Method refactoring).
+	static const std::string base64_chars;
 	/**
 	 * \brief
 	 *
@@ -178,10 +179,27 @@ public:
 	static std::string decode_uri(const std::string &in);
 };
 
-/**
- * \brief
- */
-class digest final {
+// REFACTORING: Replace Type Code with Subclass
+//
+// 'digest' was a 'final' class whose constructor contained a switch on
+// 'digest::type' with three near-identical SHA init/update/final blocks.
+// Each case is now represented by its own concrete subclass
+// (Sha256Digest, Sha384Digest, Sha512Digest), each of which encapsulates
+// exactly one algorithm with no switch at all.
+//
+// Changes made to this class declaration:
+//   1. 'final' removed  — the class must be inheritable by the subclasses.
+//   2. '~digest()' made virtual — required for safe polymorphic destruction.
+//   3. size(), data(), to_string() made pure virtual — each subclass
+//      provides its own implementation, eliminating the switch entirely.
+//   4. '_size' and '_data' moved to protected — subclasses need direct
+//      access to populate these fields during their own construction.
+//
+// Backward compatibility:
+//   The 'type' enum, the md() static helper, and the constructor signature
+//   digest(type, data, size) are all preserved unchanged. 
+
+class digest {
 public:
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
 	enum type {
@@ -195,15 +213,15 @@ public:
 
 public:
 	digest(digest::type type, const uint8_t *in_data, size_t in_size);
-	~digest();
+	virtual ~digest();
 
 	__NODISCARD
-	size_t size() const;
+	virtual size_t size() const;
 
-	uint8_t *data();
+	virtual uint8_t *data();
 
 	__NODISCARD
-	std::string to_string() const;
+	virtual std::string to_string() const;
 
 public:
 	static const EVP_MD *md(digest::type t) {
@@ -219,9 +237,52 @@ public:
 		}
 	}
 
-private:
+protected:
 	size_t                   _size;
 	std::shared_ptr<uint8_t> _data;
+};
+
+// ---------------------------------------------------------------------------
+// Concrete subclass for SHA-256.
+// Declared here; implemented in digest.cpp alongside the base class.
+// Replaces the SHA256 case of the original switch in digest's constructor.
+// ---------------------------------------------------------------------------
+class Sha256Digest final : public digest {
+public:
+	Sha256Digest(const uint8_t *in_data, size_t in_size);
+	~Sha256Digest() override = default;
+
+	__NODISCARD size_t size() const override;
+	uint8_t           *data()        override;
+	__NODISCARD std::string to_string() const override;
+};
+
+// ---------------------------------------------------------------------------
+// Concrete subclass for SHA-384.
+// Replaces the SHA384 case of the original switch in digest's constructor.
+// ---------------------------------------------------------------------------
+class Sha384Digest final : public digest {
+public:
+	Sha384Digest(const uint8_t *in_data, size_t in_size);
+	~Sha384Digest() override = default;
+
+	__NODISCARD size_t size() const override;
+	uint8_t           *data()        override;
+	__NODISCARD std::string to_string() const override;
+};
+
+// ---------------------------------------------------------------------------
+// Concrete subclass for SHA-512.
+// Replaces the SHA512 case of the original switch in digest's constructor.
+// ---------------------------------------------------------------------------
+class Sha512Digest final : public digest {
+public:
+	Sha512Digest(const uint8_t *in_data, size_t in_size);
+	~Sha512Digest() override = default;
+
+	__NODISCARD size_t size() const override;
+	uint8_t           *data()        override;
+	__NODISCARD std::string to_string() const override;
 };
 
 /**

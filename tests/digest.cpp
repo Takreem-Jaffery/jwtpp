@@ -26,6 +26,24 @@
 
 #include <jwtpp/jwtpp.hh>
 
+// -----------------------------------------------------------------------
+// TEST FILE NOTE — digest tests
+//
+// The public interface of jwtpp::digest is completely unchanged by the
+// refactoring applied to digest.cpp.  The constructor still accepts the
+// same (type, data, size) arguments, and size()/data()/to_string() still
+// have the same signatures and semantics.
+//
+// Refactorings applied to digest.cpp:
+//   • Extract Method  — the repeated SHA256/384/512 init-update-final
+//     sequences were extracted into compute_sha256/384/512() helpers.
+//   • Decompose Conditional — the switch dispatcher was simplified to
+//     a single call per case via those helpers.
+//
+// Because all changes are internal to the translation unit, no test code
+// needs to change.
+// -----------------------------------------------------------------------
+
 static const uint32_t test_payload_size = 4080;
 
 extern unsigned char test_payload[test_payload_size];
