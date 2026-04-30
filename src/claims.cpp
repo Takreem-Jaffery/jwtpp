@@ -33,6 +33,16 @@ void claims::set::any(const std::string &key, const std::string &value) {
 	_claims->operator[](key) = value;
 }
 
+// //Pull up method
+// //all constructors use the same member initialization
+// //delegated it to a separate function init()
+// void claims::init() {
+// 	_set   = claims::set(&_claims);
+// 	_get   = claims::get(&_claims);
+// 	_has   = claims::has(&_claims);
+// 	_del   = claims::del(&_claims);
+// 	_check = claims::check(&_claims);
+// } NOT REALLY NEEDED
 claims::claims()
 	: _claims()
 	, _set(&_claims)
@@ -42,6 +52,9 @@ claims::claims()
 	, _check(&_claims)
 {}
 
+//Extract Method
+//function being performed for b64 parsing check
+//pull it out into a method parse
 claims::claims(const std::string &d, bool b64) :
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
 	  _claims()
@@ -54,6 +67,9 @@ claims::claims(const std::string &d, bool b64) :
 	claims()
 #endif // defined(_MSC_VER) && (_MSC_VER < 1700)
 {
+	parse(d,b64);
+}
+void claims::parse(const std::string &d, bool b64){
 	if (b64) {
 		std::string decoded = b64::decode_uri(d);
 

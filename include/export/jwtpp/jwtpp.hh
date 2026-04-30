@@ -234,15 +234,8 @@ private:
 	class has {
 	public:
 		explicit has(Json::Value *c) : _claims(c) {}
-	public:
 		bool any(const std::string &key) { return _claims->isMember(key); }
-		bool iss() { return any("iss"); }
-		bool sub() { return any("sub"); }
-		bool aud() { return any("aud"); }
-		bool exp() { return any("exp"); }
-		bool nbf() { return any("nbf"); }
-		bool iat() { return any("iat"); }
-		bool jti() { return any("jti"); }
+		//Remove Middle Man by getting rid of iss, sub, aud...
 	private:
 		Json::Value *_claims;
 	};
@@ -251,9 +244,13 @@ private:
 	public:
 		explicit check(Json::Value *c) : _claims(c) {}
 	public:
+		//Replace Temp with Query
+		//added claimsString
+		std::string claimsString(const std::string &key){
+			return _claims->operator[](key).asString();
+		}
 		bool any(const std::string &key, const std::string &value) {
-			std::string s = _claims->operator[](key).asString();
-			return s == value;
+			return claimsString(key) == value;
 		}
 		
 		bool any(const std::string &key, Json::UInt value) { return _claims->operator[](key).asUInt() == value; }
@@ -262,13 +259,7 @@ private:
 		bool any(const std::string &key, Json::Int64 value) { return _claims->operator[](key).asInt64() == value; }
 		bool any(const std::string &key, double value) { return _claims->operator[](key).asDouble() == value; }
 		
-		bool iss(const std::string &value) { return any("iss", value); }
-		bool sub(const std::string &value) { return any("sub", value); }
-		bool aud(const std::string &value) { return any("aud", value); }
-		bool exp(const std::string &value) { return any("exp", value); }
-		bool nbf(const std::string &value) { return any("nbf", value); }
-		bool iat(const std::string &value) { return any("iat", value); }
-		bool jti(const std::string &value) { return any("jti", value); }
+	
 	private:
 		Json::Value *_claims;
 	};
@@ -276,15 +267,8 @@ private:
 	class del {
 	public:
 		explicit del(Json::Value *c) : _claims(c) {}
-	public:
 		void any(const std::string &key) { _claims->removeMember(key); }
-		void iss() { any("iss"); }
-		void sub() { any("sub"); }
-		void aud() { any("aud"); }
-		void exp() { any("exp"); }
-		void nbf() { any("nbf"); }
-		void iat() { any("nbf"); }
-		void jti() { any("jti"); }
+		
 	private:
 		Json::Value *_claims;
 	};
@@ -294,8 +278,12 @@ private:
 	public:
 		explicit get(Json::Value *c) : _claims(c) {}
 	public:
-		std::string any(const std::string &key) {
+		//Same Replace Temp With Query as Above
+		std::string claimsString(const std::string &key) {
 			return _claims->operator[](key).asString();
+		}
+		std::string any(const std::string &key) {
+			return claimsString(key);
 		}
 		
 		Json::Int anyInt(const std::string &key) {
@@ -322,13 +310,6 @@ private:
 			return _claims->operator[](key).asDouble();
 		}
 		
-		std::string iss() { return any("iss"); }
-		std::string sub() { return any("sub"); }
-		std::string aud() { return any("aud"); }
-		std::string exp() { return any("exp"); }
-		std::string nbf() { return any("nbf"); }
-		std::string iat() { return any("iat"); }
-		std::string jti() { return any("jti"); }
 	private:
 		Json::Value *_claims;
 	};
@@ -337,6 +318,9 @@ private:
 	public:
 		explicit set(Json::Value *c) : _claims(c) {}
 	public:
+		//defined in claims.cpp
+		void any(const std::string &key, const std::string &value);
+
 		void any(const std::string &key, Json::UInt value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, Json::Int value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, Json::UInt64 value) { _claims->operator[](key) = value; }
@@ -344,14 +328,6 @@ private:
 		void any(const std::string &key, double value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, const std::string &value);
 		
-		void iss(const std::string &value) { any("iss", value); }
-		void sub(const std::string &value) { any("sub", value); }
-		void aud(const std::string &value) { any("aud", value); }
-		void exp(const std::string &value) { any("exp", value); }
-		void nbf(const std::string &value) { any("nbf", value); }
-		void iat(const std::string &value) { any("iat", value); }
-		void jti(const std::string &value) { any("jti", value); }
-
 	private:
 		Json::Value *_claims;
 	};
@@ -418,6 +394,9 @@ public:
 #endif // !(defined(_MSC_VER) && (_MSC_VER < 1700))
 
 private:
+	//Extract Method parse() declared here, defined in claims.cpp
+	void parse(const std::string &d, bool b64);
+	
 	Json::Value _claims;
 
 	class set   _set;
