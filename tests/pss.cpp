@@ -25,7 +25,8 @@ protected:
     //Extract Method
     //SetUp() replaces the repeated boilerplate in every test body.
     void SetUp() override {
-        const auto [key_bits, sign_alg] = GetParam();
+        const int key_bits = std::get<0>(GetParam());
+        const jwtpp::alg_t sign_alg = std::get<1>(GetParam());
 
         ASSERT_NO_THROW(key    = jwtpp::rsa::gen(key_bits));
         ASSERT_NO_THROW(pubkey = jwtpp::sp_rsa_key(RSAPublicKey_dup(key.get()), ::RSA_free));
@@ -67,13 +68,15 @@ TEST_P(PssSignVerifyFixture, sign_and_verify) {
 
     //Custom callback: accepts tokens not issued by "troian".
     auto accept_cb = [](jwtpp::sp_claims c) {
-        return !c->check().iss("troian");
+        // The claims check helper now uses the generic any() predicate.
+        return !c->check().any("iss", "troian");
     };
     EXPECT_TRUE(jws->verify(verifier, accept_cb));
 
     //Verifying with a crypto object of a *different* alg must throw.
     //I grabbed the alg from the fixture parameter and picked the other one.
-    const auto [key_bits, sign_alg] = GetParam();
+    const int key_bits = std::get<0>(GetParam());
+    const jwtpp::alg_t sign_alg = std::get<1>(GetParam());
     const jwtpp::alg_t wrong_alg =
         (sign_alg == jwtpp::alg_t::PS256) ? jwtpp::alg_t::PS384 : jwtpp::alg_t::PS256;
 
@@ -102,8 +105,10 @@ INSTANTIATE_TEST_SUITE_P(
     ),
     [](const ::testing::TestParamInfo<PssSignVerifyFixture::ParamType> &info) {
         //Human-readable test name in output, e.g. "PS256_1024bit"
-        const auto [bits, alg] = info.param;
-        return jwtpp::crypto::alg2str(alg) + "_" + std::to_string(bits) + "bit";
+        // std::get() keeps the generator compatible with the current C++14 build.
+        const int bits = std::get<0>(info.param);
+        const jwtpp::alg_t alg = std::get<1>(info.param);
+        return std::string(jwtpp::crypto::alg2str(alg)) + "_" + std::to_string(bits) + "bit";
     }
 );
 

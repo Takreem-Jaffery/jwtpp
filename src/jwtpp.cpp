@@ -26,22 +26,6 @@ namespace jwtpp {
 
 namespace {
 
-//Move Method 
-//tokenize() has no dependency on jws state; it is a pure string utility.
-//Moving it into an anonymous namespace makes that clear and removes it from the public jws interface.
-std::vector<std::string> tokenize(const std::string &text, char sep) {
-    std::vector<std::string> tokens;
-    std::size_t start = 0;
-    std::size_t end   = 0;
-
-    while ((end = text.find(sep, start)) != std::string::npos) {
-        tokens.push_back(text.substr(start, end - start));
-        start = end + 1;
-    }
-    tokens.push_back(text.substr(start));
-    return tokens;
-}
-
 static const std::string BEARER_PREFIX("bearer ");
 
 //Extract Method
@@ -87,6 +71,21 @@ sp_claims parse_jwt_claims(const std::string &encoded_claims) {
 
 } //anonymous namespace
 
+std::vector<std::string> jws::tokenize(const std::string &text, char sep) {
+    // Keep tokenize() as a jws member because the header still declares it
+    // there; the parser depends on that exact symbol for linking.
+    std::vector<std::string> tokens;
+    std::size_t start = 0;
+    std::size_t end   = 0;
+
+    while ((end = text.find(sep, start)) != std::string::npos) {
+        tokens.push_back(text.substr(start, end - start));
+        start = end + 1;
+    }
+    tokens.push_back(text.substr(start));
+    return tokens;
+}
+
 
 jws::jws(alg_t a, const std::string &data, sp_claims cl, const std::string &sig)
     : _alg(a)
@@ -130,7 +129,7 @@ sp_jws jws::parse(const std::string &full_bearer) {
 
     //Replace Constructor with Factory Method
     //Raw `new jws(...)` wrapped in a bare try/catch that only rethrew was noise. make_shared expresses ownership intent and the redundant try/catch is removed (Replace Error Code with Exception principle: don't catch what you cannot handle).
-    return std::make_shared<jws>(a, signed_data, cl, tokens[2]);
+    return sp_jws(new jws(a, signed_data, cl, tokens[2]));
 }
 
 //Inline Method

@@ -83,14 +83,11 @@ TEST(jwtpp, sign_verify_eddsa) {
 	EXPECT_TRUE(jws->verify(ed_pub));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return !cl->check().iss("troian");
+		// The refactored claims checker only exposes the generic any() helper.
+		return !cl->check().any("iss", "troian");
 	};
 
-#if defined(_MSC_VER) && (_MSC_VER < 1700)
-    EXPECT_TRUE(jws->verify(ed, vf));
-#else
-	EXPECT_TRUE(jws->verify(ed, std::bind<bool>(vf, std::placeholders::_1)));
-#endif // defined(_MSC_VER) && (_MSC_VER < 1700)
+	EXPECT_TRUE(jws->verify(ed, vf));
 
 	bearer = "ghdfgddf";
 	EXPECT_THROW(jws = jwtpp::jws::parse(bearer), std::exception);

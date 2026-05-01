@@ -5,14 +5,16 @@ TEST(jwtpp, create_close_claims)
 {
     EXPECT_NO_THROW(jwtpp::claims cl);
 
-    // These may NOT throw anymore depending on your parse() behavior
-    // Your parse() doesn't explicitly throw → so we relax expectations
-    EXPECT_NO_THROW(jwtpp::claims cl(""));
-    EXPECT_NO_THROW(jwtpp::claims cl("", true));
+    // The constructor parses immediately, so empty and malformed input
+    // must still be treated as errors instead of being silently accepted.
+    EXPECT_THROW(jwtpp::claims cl(""), std::exception);
+    EXPECT_THROW(jwtpp::claims cl("", true), std::exception);
+    EXPECT_THROW(jwtpp::claims cl("jkhfkjsgdfg"), std::exception);
 
     jwtpp::sp_claims cl;
     EXPECT_NO_THROW(cl = std::make_shared<jwtpp::claims>());
 
+    // Empty keys and values are rejected by the string setter.
     EXPECT_THROW(cl->set().any("", "val"), std::invalid_argument);
     EXPECT_THROW(cl->set().any("key", ""), std::invalid_argument);
 

@@ -20,23 +20,27 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <iostream>
+// REFACTORING: Removed unused #include <iostream>
 
 #include <jwtpp/jwtpp.hh>
 
 namespace jwtpp {
 
+// REFACTORING: Replace temporary variable with query
+// The local variable 'out' was inlined directly into the return statement,
+// eliminating unnecessary temporary storage.
 std::string marshal(const Json::Value &json) {
 	Json::StreamWriterBuilder builder;
 	builder["commentStyle"] = "None";
 	builder["indentation"] = ""; // Write in one line
-	std::string out = Json::writeString(builder, json);
-	return out;
+	return Json::writeString(builder, json);
 }
 
+// REFACTORING: Replace temporary variable with query
+// The local variable 's' was inlined directly into the b64::encode_uri() call,
+// eliminating intermediate storage and making the data flow clearer.
 std::string marshal_b64(const Json::Value &json) {
-	std::string s = marshal(json);
-	return b64::encode_uri(s);
+	return b64::encode_uri(marshal(json));
 }
 
 Json::Value unmarshal(const std::string &in) {
@@ -46,10 +50,12 @@ Json::Value unmarshal(const std::string &in) {
 	return j;
 }
 
-Json::Value unmarshal_b64(const std::string &b64) {
-	std::string decoded;
-	decoded = b64::decode(b64);
-	return unmarshal(decoded);
+// REFACTORING: Replace temporary variable with query
+// The local variable 'decoded' was inlined directly into the unmarshal() call,
+// eliminating unnecessary temporary storage and making intent clearer.
+// Also renamed parameter from 'b64' to 'encoded' to avoid shadowing the b64 class name.
+Json::Value unmarshal_b64(const std::string &encoded) {
+	return unmarshal(b64::decode(encoded));
 }
 
 } // namespace jwtpp

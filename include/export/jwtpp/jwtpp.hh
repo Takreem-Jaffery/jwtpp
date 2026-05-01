@@ -142,9 +142,6 @@ public:
 using secure_string = std::basic_string<char, std::char_traits<char>, secure_allocator<char>>;
 
 class b64 final {
-private:
-	static const std::string base64_chars;
-
 	static inline bool is_base64(unsigned char c) {
 		return (isalnum(c) || (c == '+') || (c == '/'));
 	}
@@ -389,7 +386,6 @@ private:
 		void any(const std::string &key, Json::UInt64 value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, Json::Int64 value) { _claims->operator[](key) = value; }
 		void any(const std::string &key, double value) { _claims->operator[](key) = value; }
-		void any(const std::string &key, const std::string &value);
 		
 	private:
 		Json::Value *_claims;
@@ -772,6 +768,7 @@ private:
 class pss : public crypto {
 public:
 	explicit pss(sp_rsa_key key, alg_t a = alg_t::PS256);
+	static std::shared_ptr<pss> create(sp_rsa_key key, alg_t a = alg_t::PS256);
 
 	~pss() override = default;
 

@@ -6,10 +6,10 @@ set(VERSION 0.1.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 
-option(JWTPP_WITH_TESTS "Build tests" OFF)
-option(JWTPP_WITH_COVERAGE "Enable coverage tests" OFF)
+option(JWTPP_WITH_TESTS "Build tests" ON)
+option(JWTPP_WITH_COVERAGE "Enable coverage tests" ON)
 option(JWTPP_WITH_INSTALL "Allow root targets to not issue install" ON)
-option(JWTPP_WITH_SHARED_LIBS "Build shared library" OFF)
+option(JWTPP_WITH_SHARED_LIBS "Build shared library" ON)
 
 if(JWTPP_WITH_TESTS AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
 	include(CodeCoverage)

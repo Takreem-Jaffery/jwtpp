@@ -27,12 +27,18 @@
 #include <chrono>
 
 TEST(jwtpp, check_expire) {
-	auto future_t = std::chrono::system_clock::now() + std::chrono::seconds{30};
-	auto future = std::chrono::system_clock::to_time_t(future_t);
+	// REFACTORING: Replace temporary variable with query
+	// The intermediate variable 'future_t' was inlined directly into to_time_t() call,
+	// eliminating unnecessary temporary and making intent clearer.
+	auto future = std::chrono::system_clock::to_time_t(
+		std::chrono::system_clock::now() + std::chrono::seconds{30}
+	);
 
 	jwtpp::claims cl;
 
-	cl.set().exp(std::to_string(future));
+	// The claims API exposes generic accessors here, so we store and read
+	// the expiration value through any() rather than removed convenience helpers.
+	cl.set().any("exp", std::to_string(future));
   
 	jwtpp::sp_rsa_key key;
 	jwtpp::sp_rsa_key pubkey;
@@ -52,19 +58,30 @@ TEST(jwtpp, check_expire) {
 
 	EXPECT_NO_THROW(jws = jwtpp::jws::parse(bearer));
   
-	auto now_t = std::chrono::system_clock::now();
-	auto now =std::chrono::system_clock::to_time_t(now_t);
+	// REFACTORING: Replace temporary variable with query
+	// The intermediate variable 'now_t' was inlined directly into to_time_t() call,
+	// eliminating unnecessary temporary.
+	auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-	auto vf = [&now](jwtpp::sp_claims cl) {
-		time_t &&future_s = std::stoll(cl->get().exp());
-		return 0 < difftime(future_s, now);
+	// REFACTORING: Extract method
+	// The repeated time verification logic from two nearly-identical lambdas
+	// has been consolidated into a single helper lambda that takes a comparison operator.
+	auto verify_expiry = [&now](jwtpp::sp_claims cl, 
+		bool (*compare)(double)) -> bool {
+		// Read the expiration claim through the generic getter to match the
+		// refactored claims interface.
+		time_t future_s = std::stoll(cl->get().any("exp"));
+		return compare(difftime(future_s, now));
+	};
+
+	auto vf = [&verify_expiry](jwtpp::sp_claims cl) {
+		return verify_expiry(cl, [](double d) { return 0 < d; });
 	};
 
 	EXPECT_TRUE(jws->verify(r512_pub, vf));
 
-	auto vf_ = [&now](jwtpp::sp_claims cl) {
-		time_t &&future_s = std::stoll(cl->get().exp());
-		return 0 > difftime(now, future_s);
+	auto vf_ = [&verify_expiry](jwtpp::sp_claims cl) {
+		return verify_expiry(cl, [](double d) { return 0 > -d; });
 	};
 
 	EXPECT_TRUE(jws->verify(r512_pub, vf_));
