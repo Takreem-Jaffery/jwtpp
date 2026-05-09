@@ -38,53 +38,53 @@ TEST(jwtpp, create_close_claims)
 	EXPECT_THROW(cl->set().any("", "val"), std::exception);
 	EXPECT_THROW(cl->set().any("key", ""), std::exception);
 
-	EXPECT_NO_THROW(cl->set().iss("troian"));
-	EXPECT_NO_THROW(cl->set().iss("troian"));
+	EXPECT_NO_THROW(cl->set("iss", "troian"));
+	EXPECT_NO_THROW(cl->set("iss", "troian"));
 
-	EXPECT_FALSE(cl->has().aud());
+	EXPECT_FALSE(cl->has("aud"));
 
-	EXPECT_EQ("troian", cl->get().iss());
+	EXPECT_EQ("troian", cl->get("iss"));
 }
 
 TEST(jwtpp, set_other_types_claims)
 {
 	jwtpp::claims cl;
 	const Json::Int ts = 1593345759;
-	cl.set().any("iat", ts);
-	EXPECT_TRUE(cl.has().any("iat"));
-	EXPECT_TRUE(cl.get().anyInt("iat") == ts);
-	EXPECT_TRUE(cl.check().any("iat", ts));
+	cl.set("iat", ts);
+	EXPECT_TRUE(cl.has("iat"));
+	EXPECT_TRUE(cl.getInt("iat") == ts);
+	EXPECT_TRUE(cl.check("iat", ts));
 	
 	const Json::UInt uintval = 0x1d;
-	cl.set().any("uintval", uintval);
-	EXPECT_TRUE(cl.has().any("uintval"));
-	EXPECT_TRUE(cl.get().anyUInt("uintval") == uintval);
-	EXPECT_TRUE(cl.check().any("uintval", uintval));
+	cl.set("uintval", uintval);
+	EXPECT_TRUE(cl.has("uintval"));
+	EXPECT_TRUE(cl.getUInt("uintval") == uintval);
+	EXPECT_TRUE(cl.check("uintval", uintval));
 	
 	const Json::Int64 int64val = 0x1122334455667788;
-	cl.set().any("int64val", int64val);
-	EXPECT_TRUE(cl.has().any("int64val"));
-	EXPECT_TRUE(cl.get().anyInt64("int64val") == int64val);
-	EXPECT_TRUE(cl.check().any("int64val", int64val));
+	cl.set("int64val", int64val);
+	EXPECT_TRUE(cl.has("int64val"));
+	EXPECT_TRUE(cl.getInt64("int64val") == int64val);
+	EXPECT_TRUE(cl.check("int64val", int64val));
 	
 	const Json::UInt64 unsig64int = 0x8877665544332211;
-	cl.set().any("unsig64int", unsig64int);
-	EXPECT_TRUE(cl.has().any("unsig64int"));
-	EXPECT_TRUE(cl.get().anyUInt64("unsig64int") == unsig64int);
-	EXPECT_TRUE(cl.check().any("unsig64int", unsig64int));
+	cl.set("unsig64int", unsig64int);
+	EXPECT_TRUE(cl.has("unsig64int"));
+	EXPECT_TRUE(cl.getUInt64("unsig64int") == unsig64int);
+	EXPECT_TRUE(cl.check("unsig64int", unsig64int));
 	
 	const double realval = 0.01;
-	cl.set().any("realval", realval);
-	EXPECT_TRUE(cl.has().any("realval"));
-	EXPECT_TRUE(cl.get().anyDouble("realval"));
-	EXPECT_TRUE(cl.check().any("realval", realval));
+	cl.set("realval", realval);
+	EXPECT_TRUE(cl.has("realval"));
+	EXPECT_TRUE(cl.getDouble("realval"));
+	EXPECT_TRUE(cl.check("realval", realval));
 }
 
 TEST(jwtpp, set__claim)
 {
 	jwtpp::claims cl;
 	const Json::Int ts = 1593345759;
-	cl.set().any("iat", ts);
-	EXPECT_TRUE(cl.has().any("iat"));
-	EXPECT_TRUE(cl.get().anyInt("iat") == ts);
+	cl.set("iat", ts);
+	EXPECT_TRUE(cl.has("iat"));
+	EXPECT_TRUE(cl.getInt("iat") == ts);
 }

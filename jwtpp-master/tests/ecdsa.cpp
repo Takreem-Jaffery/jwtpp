@@ -68,7 +68,7 @@ TEST(jwtpp, sign_verify_ecdsa256) {
 	EXPECT_TRUE(jws->verify(e256_pub));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return !cl->check().iss("troian");
+		return !cl->check("iss", "troian");
 	};
 
 #if defined(_MSC_VER) && (_MSC_VER < 1700)

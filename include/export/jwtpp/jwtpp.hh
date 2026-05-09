@@ -290,106 +290,6 @@ public:
 * TODO https://github.com/troian/jwtpp/issues/38
 */
 class claims final {
-private:
-	class has {
-	public:
-		explicit has(Json::Value *c) : _claims(c) {}
-		bool any(const std::string &key) { return _claims->isMember(key); }
-		//Remove Middle Man by getting rid of iss, sub, aud...
-	private:
-		Json::Value *_claims;
-	};
-
-	class check {
-	public:
-		explicit check(Json::Value *c) : _claims(c) {}
-	public:
-		//Replace Temp with Query
-		//added claimsString
-		std::string claimsString(const std::string &key){
-			return _claims->operator[](key).asString();
-		}
-		bool any(const std::string &key, const std::string &value) {
-			return claimsString(key) == value;
-		}
-		
-		bool any(const std::string &key, Json::UInt value) { return _claims->operator[](key).asUInt() == value; }
-		bool any(const std::string &key, Json::Int value) { return _claims->operator[](key).asInt() == value; }
-		bool any(const std::string &key, Json::UInt64 value) { return _claims->operator[](key).asUInt64() == value; }
-		bool any(const std::string &key, Json::Int64 value) { return _claims->operator[](key).asInt64() == value; }
-		bool any(const std::string &key, double value) { return _claims->operator[](key).asDouble() == value; }
-		
-	
-	private:
-		Json::Value *_claims;
-	};
-
-	class del {
-	public:
-		explicit del(Json::Value *c) : _claims(c) {}
-		void any(const std::string &key) { _claims->removeMember(key); }
-		
-	private:
-		Json::Value *_claims;
-	};
-
-
-	class get {
-	public:
-		explicit get(Json::Value *c) : _claims(c) {}
-	public:
-		//Same Replace Temp With Query as Above
-		std::string claimsString(const std::string &key) {
-			return _claims->operator[](key).asString();
-		}
-		std::string any(const std::string &key) {
-			return claimsString(key);
-		}
-		
-		Json::Int anyInt(const std::string &key) {
-			return _claims->operator[](key).asInt();
-		}
-		
-		Json::UInt anyUInt(const std::string &key) {
-			return _claims->operator[](key).asUInt();
-		}
-		
-		Json::Int64 anyInt64(const std::string &key) {
-			return _claims->operator[](key).asInt64();
-		}
-		
-		Json::UInt64 anyUInt64(const std::string &key) {
-			return _claims->operator[](key).asUInt64();
-		}
-		
-		bool anyBool(const std::string &key) {
-			return _claims->operator[](key).asBool();
-		}
-		
-		double anyDouble(const std::string &key) {
-			return _claims->operator[](key).asDouble();
-		}
-		
-	private:
-		Json::Value *_claims;
-	};
-
-	class set {
-	public:
-		explicit set(Json::Value *c) : _claims(c) {}
-	public:
-		//defined in claims.cpp
-		void any(const std::string &key, const std::string &value);
-
-		void any(const std::string &key, Json::UInt value) { _claims->operator[](key) = value; }
-		void any(const std::string &key, Json::Int value) { _claims->operator[](key) = value; }
-		void any(const std::string &key, Json::UInt64 value) { _claims->operator[](key) = value; }
-		void any(const std::string &key, Json::Int64 value) { _claims->operator[](key) = value; }
-		void any(const std::string &key, double value) { _claims->operator[](key) = value; }
-		
-	private:
-		Json::Value *_claims;
-	};
 public:
 	/**
 	 * \brief
@@ -403,44 +303,56 @@ public:
 	 */
 	explicit claims(const std::string &d, bool b64 = false);
 
-	/**
-	 * \brief
-	 *
-	 * \param key
-	 * \param value
-	 *
-	 * \return
-	 */
-	class claims::set &set() { return _set; }
+public:
 
-	/**
-	 * \brief
-	 *
-	 * \param key
-	 *
-	 * \return
-	 */
-	class claims::has &has() { return _has; }
+	void set(const std::string &key, const std::string &value);
 
-	/**
-	 * \brief
-	 *
-	 * \param key
-	 *
-	 * \return
-	 */
-	class claims::del &del() { return _del; }
+	void set(const std::string &key, Json::UInt value);
 
-	/**
-	 * \brief
-	 *
-	 * \param key
-	 *
-	 * \return
-	 */
-	class claims::get &get() { return _get; }
+	void set(const std::string &key, Json::Int value);
 
-	class claims::check &check() { return _check; }
+	void set(const std::string &key, Json::UInt64 value);
+
+	void set(const std::string &key, Json::Int64 value);
+
+	void set(const std::string &key, double value);
+
+
+	std::string get(const std::string &key) const;
+
+	Json::Int getInt(const std::string &key) const;
+
+	Json::UInt getUInt(const std::string &key) const;
+
+	Json::Int64 getInt64(const std::string &key) const;
+
+	Json::UInt64 getUInt64(const std::string &key) const;
+
+	bool getBool(const std::string &key) const;
+
+	double getDouble(const std::string &key) const;
+
+	bool has(const std::string &key) const;
+
+	void del(const std::string &key);
+
+	bool check(const std::string &key,
+			   const std::string &value) const;
+
+	bool check(const std::string &key,
+			   Json::UInt value) const;
+
+	bool check(const std::string &key,
+			   Json::Int value) const;
+
+	bool check(const std::string &key,
+			   Json::UInt64 value) const;
+
+	bool check(const std::string &key,
+			   Json::Int64 value) const;
+
+	bool check(const std::string &key,
+			   double value) const;
 
 	std::string b64();
 
@@ -448,21 +360,18 @@ public:
 public:
 	template <typename... _Args>
 	static sp_claims make_shared(_Args&&... __args) {
-		return std::make_shared<class claims>(__args...);
+		return std::make_shared<class claims>(
+			std::forward<_Args>(__args)...);
 	}
 #endif // !(defined(_MSC_VER) && (_MSC_VER < 1700))
 
 private:
-	//Extract Method parse() declared here, defined in claims.cpp
+	// Extract Method
+	// parse() declared here, defined in claims.cpp
 	void parse(const std::string &d, bool b64);
-	
-	Json::Value _claims;
 
-	class set   _set;
-	class get   _get;
-	class has   _has;
-	class del   _del;
-	class check _check;
+private:
+	Json::Value _claims;
 };
 
 class hdr final {

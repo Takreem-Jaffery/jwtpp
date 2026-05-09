@@ -44,7 +44,7 @@ TEST(jwtpp, sign_verify_hmac256)
 {
 	jwtpp::claims cl;
 
-	cl.set().any("iss", "troian");
+	cl.set("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);
@@ -82,7 +82,7 @@ TEST(jwtpp, sign_verify_hmac384)
 {
 	jwtpp::claims cl;
 
-	cl.set().any("iss", "troian");
+	cl.set("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);
@@ -119,7 +119,7 @@ TEST(jwtpp, sign_verify_hmac512)
 {
 	jwtpp::claims cl;
 
-	cl.set().any("iss", "troian");
+	cl.set("iss", "troian");
 
 	jwtpp::sp_crypto h256 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS256);
 	jwtpp::sp_crypto h384 = std::make_shared<jwtpp::hmac>("secret", jwtpp::alg_t::HS384);

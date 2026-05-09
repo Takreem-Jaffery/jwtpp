@@ -68,7 +68,7 @@ TEST(jwtpp, sign_verify_pss256) {
 	EXPECT_TRUE(jws->verify(r256_pub));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return !cl->check().iss("troian");
+		return !cl->check("iss", "troian");
 	};
 
 	EXPECT_TRUE(jws->verify(r256_pub, vf));
@@ -115,7 +115,7 @@ TEST(jwtpp, sign_verify_pss384) {
 	EXPECT_TRUE(jws->verify(r384_pub));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return !cl->check().iss("troian");
+		return !cl->check("iss", "troian");
 	};
 
 	EXPECT_TRUE(jws->verify(r384_pub, vf));
@@ -162,7 +162,7 @@ TEST(jwtpp, sign_verify_pss512) {
 	EXPECT_TRUE(jws->verify(r512_pub));
 
 	auto vf = [](jwtpp::sp_claims cl) {
-		return !cl->check().iss("troian");
+		return !cl->check("iss", "troian");
 	};
 
 	EXPECT_TRUE(jws->verify(r512_pub, vf));

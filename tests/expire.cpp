@@ -38,7 +38,7 @@ TEST(jwtpp, check_expire) {
 
 	// The claims API exposes generic accessors here, so we store and read
 	// the expiration value through any() rather than removed convenience helpers.
-	cl.set().any("exp", std::to_string(future));
+	cl.set("exp", std::to_string(future));
   
 	jwtpp::sp_rsa_key key;
 	jwtpp::sp_rsa_key pubkey;

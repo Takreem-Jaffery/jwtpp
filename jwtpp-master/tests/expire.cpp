@@ -32,7 +32,7 @@ TEST(jwtpp, check_expire) {
 
 	jwtpp::claims cl;
 
-	cl.set().exp(std::to_string(future));
+	cl.set("exp", std::to_string(future));
   
 	jwtpp::sp_rsa_key key;
 	jwtpp::sp_rsa_key pubkey;
@@ -56,14 +56,14 @@ TEST(jwtpp, check_expire) {
 	auto now =std::chrono::system_clock::to_time_t(now_t);
 
 	auto vf = [&now](jwtpp::sp_claims cl) {
-		time_t &&future_s = std::stoll(cl->get().exp());
+		time_t future_s = std::stoll(cl->get("exp"));
 		return 0 < difftime(future_s, now);
 	};
 
 	EXPECT_TRUE(jws->verify(r512_pub, vf));
 
 	auto vf_ = [&now](jwtpp::sp_claims cl) {
-		time_t &&future_s = std::stoll(cl->get().exp());
+		time_t future_s = std::stoll(cl->get("exp"));
 		return 0 > difftime(now, future_s);
 	};
 

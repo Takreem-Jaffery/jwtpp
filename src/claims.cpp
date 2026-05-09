@@ -26,50 +26,118 @@
 
 namespace jwtpp {
 
-void claims::set::any(const std::string &key, const std::string &value) {
+
+void claims::set(const std::string &key, const std::string &value) {
 	if (key.empty() || value.empty())
 		throw std::invalid_argument("Invalid params");
 
-	_claims->operator[](key) = value;
+	_claims[key] = value;
 }
 
-// //Pull up method
-// //all constructors use the same member initialization
-// //delegated it to a separate function init()
-// void claims::init() {
-// 	_set   = claims::set(&_claims);
-// 	_get   = claims::get(&_claims);
-// 	_has   = claims::has(&_claims);
-// 	_del   = claims::del(&_claims);
-// 	_check = claims::check(&_claims);
-// } NOT REALLY NEEDED
+void claims::set(const std::string &key, Json::UInt value) {
+	_claims[key] = value;
+}
+
+void claims::set(const std::string &key, Json::Int value) {
+	_claims[key] = value;
+}
+
+void claims::set(const std::string &key, Json::UInt64 value) {
+	_claims[key] = value;
+}
+
+void claims::set(const std::string &key, Json::Int64 value) {
+	_claims[key] = value;
+}
+
+void claims::set(const std::string &key, double value) {
+	_claims[key] = value;
+}
+
+std::string claims::get(const std::string &key) const {
+	return _claims[key].asString();
+}
+
+Json::Int claims::getInt(const std::string &key) const {
+	return _claims[key].asInt();
+}
+
+Json::UInt claims::getUInt(const std::string &key) const {
+	return _claims[key].asUInt();
+}
+
+Json::Int64 claims::getInt64(const std::string &key) const {
+	return _claims[key].asInt64();
+}
+
+Json::UInt64 claims::getUInt64(const std::string &key) const {
+	return _claims[key].asUInt64();
+}
+
+bool claims::getBool(const std::string &key) const {
+	return _claims[key].asBool();
+}
+
+double claims::getDouble(const std::string &key) const {
+	return _claims[key].asDouble();
+}
+
+bool claims::has(const std::string &key) const {
+	return _claims.isMember(key);
+}
+
+void claims::del(const std::string &key) {
+	_claims.removeMember(key);
+}
+
+bool claims::check(const std::string &key,
+				   const std::string &value) const {
+	return get(key) == value;
+}
+
+bool claims::check(const std::string &key,
+				   Json::UInt value) const {
+	return getUInt(key) == value;
+}
+
+bool claims::check(const std::string &key,
+				   Json::Int value) const {
+	return getInt(key) == value;
+}
+
+bool claims::check(const std::string &key,
+				   Json::UInt64 value) const {
+	return getUInt64(key) == value;
+}
+
+bool claims::check(const std::string &key,
+				   Json::Int64 value) const {
+	return getInt64(key) == value;
+}
+
+bool claims::check(const std::string &key,
+				   double value) const {
+	return getDouble(key) == value;
+}
+
 claims::claims()
 	: _claims()
-	, _set(&_claims)
-	, _get(&_claims)
-	, _has(&_claims)
-	, _del(&_claims)
-	, _check(&_claims)
 {}
 
-//Extract Method
-//function being performed for b64 parsing check
-//pull it out into a method parse
+// Extract Method
+// function being performed for b64 parsing check
+// pull it out into a method parse
 claims::claims(const std::string &d, bool b64) :
 #if defined(_MSC_VER) && (_MSC_VER < 1700)
 	  _claims()
-	, _set(&_claims)
-	, _get(&_claims)
-	, _has(&_claims)
-	, _del(&_claims)
-	, _check(&_claims)
 #else
 	claims()
 #endif // defined(_MSC_VER) && (_MSC_VER < 1700)
 {
-	parse(d,b64);
+	parse(d, b64);
 }
-void claims::parse(const std::string &d, bool b64){
+
+void claims::parse(const std::string &d, bool b64) {
 	if (b64) {
 		std::string decoded = b64::decode_uri(d);
 
