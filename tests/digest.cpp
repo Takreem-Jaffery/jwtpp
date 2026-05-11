@@ -25,6 +25,7 @@
 #include <functional>
 
 #include <jwtpp/jwtpp.hh>
+#include <openssl/sha.h>
 
 // -----------------------------------------------------------------------
 // TEST FILE NOTE — digest tests
@@ -63,6 +64,29 @@ TEST(jwtpp, digest_to_string_invalid) {
 
 	EXPECT_NE(payload_hash, d.to_string());
 }
+// test cases for digest subclasses
+
+TEST(jwtpp, subclass_vs_base_sha256) {
+	jwtpp::digest base(jwtpp::digest::type::SHA256, test_payload, test_payload_size);
+	jwtpp::Sha256Digest sub(test_payload, test_payload_size);
+
+	EXPECT_EQ(base.size(), sub.size());
+	EXPECT_EQ(base.to_string(), sub.to_string());
+}
+
+TEST(jwtpp, subclass_sizes_and_to_string_length) {
+	jwtpp::Sha256Digest s256(test_payload, test_payload_size);
+	jwtpp::Sha384Digest s384(test_payload, test_payload_size);
+	jwtpp::Sha512Digest s512(test_payload, test_payload_size);
+
+	EXPECT_EQ(s256.size(), (size_t)SHA256_DIGEST_LENGTH);
+	EXPECT_EQ(s384.size(), (size_t)SHA384_DIGEST_LENGTH);
+	EXPECT_EQ(s512.size(), (size_t)SHA512_DIGEST_LENGTH);
+	
+	EXPECT_NE(s256.to_string(), s384.to_string());
+	EXPECT_NE(s384.to_string(), s512.to_string());
+}
+//  close added test cases
 
 unsigned char test_payload[] = {
 	0xe9, 0x03, 0x00, 0x00, 0x7c, 0x05, 0x10, 0x40, 0x00, 0x00, 0x10, 0x40,
